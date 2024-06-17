@@ -1,6 +1,9 @@
-import numpy as np
 from PIL import Image
+from typing import List
 
+import numpy as np
+import pandas as pd
+from torch import Tensor
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
 
@@ -141,6 +144,58 @@ class TripletMNIST(Dataset):
 
     def __len__(self):
         return len(self.mnist_dataset)
+    
+    
+class TripletLatent(Dataset):
+    def __init__(self, latent_df: pd.DataFrame, feature_cols: List[str], train: bool = False):
+        self.latent_df = latent_df
+        self.train = train
+        self.feature_cols = feature_cols
+        if self.train:
+            self.train_labels = latent_df.name.values
+            self.train_data = latent_df[self.feature_cols].values.astype(float)
+            self.labels_set = set(self.train_labels)
+            self.label_to_indices = {label: np.where(self.train_labels == label)[0]
+                                     for label in self.labels_set}
+        else:
+            self.test_labels = latent_df.name
+            self.test_data = latent_df[self.feature_cols].values.astype(float)
+            self.labels_set = set(self.test_labels)
+            self.label_to_indices = {label: np.where(self.test_labels == label)[0]
+                                     for label in self.labels_set}
+            random_state = np.random.RandomState(29)
+            triplets = [[i,
+                         random_state.choice(self.label_to_indices[self.test_labels[i].item()]),
+                         random_state.choice(self.label_to_indices[
+                                                np.random.choice(
+                                                    list(self.labels_set - set([self.test_labels[i].item()]))
+                                                )
+                                            ])
+                        ]
+                        for i in range(len(self.test_data))]
+            self.test_triplets = triplets
+
+
+    def __getitem__(self, index):
+        if self.train:
+            feat1, label1 = self.train_data[index], self.train_labels[index].item()
+            positive_index = index
+            while positive_index == index:
+                positive_index = np.random.choice(self.label_to_indices[label1])
+            negative_label = np.random.choice(list(self.labels_set - set([label1])))
+            negative_index = np.random.choice(self.label_to_indices[negative_label])
+            feat2 = self.train_data[positive_index]
+            feat3 = self.train_data[negative_index]
+        else:
+            feat1 = self.test_data[self.test_triplets[index][0]]
+            feat2 = self.test_data[self.test_triplets[index][1]]
+            feat3 = self.test_data[self.test_triplets[index][2]]
+        feat1, feat2, feat3 = Tensor(feat1), Tensor(feat2), Tensor(feat3)
+        return (feat1, feat2, feat3), []
+    
+
+    def __len__(self):
+        return len(self.latent_df)
 
 
 class BalancedBatchSampler(BatchSampler):

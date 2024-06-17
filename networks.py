@@ -85,3 +85,27 @@ class TripletNet(nn.Module):
 
     def get_embedding(self, x):
         return self.embedding_net(x)
+    
+
+class ShallowNet(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super(ShallowNet, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.net = nn.Sequential(nn.Linear(input_dim, 256),
+                                 nn.PReLU(),
+                                 nn.Linear(256, 256),
+                                 nn.PReLU(),
+                                 nn.Linear(256, 128)
+                                )
+
+
+    def forward(self, x1, x2, x3):
+        output1 = self.net(x1)
+        output2 = self.net(x2)
+        output3 = self.net(x3)
+        return output1, output2, output3
+
+
+    def get_embedding(self, x):
+        return self.net(x)
