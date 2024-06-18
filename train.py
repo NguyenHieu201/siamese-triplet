@@ -3,6 +3,7 @@ from typing import List
 
 import pandas as pd
 from torch.utils.data import DataLoader
+import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
@@ -13,7 +14,7 @@ from trainer import fit
 
 
 def get_feature_cols(n_features: int) -> List[str]:
-    feature_cols = [f"feature_{fidx}" for fidx in range(n_features)]
+    feature_cols = [f"feat_{fidx}" for fidx in range(n_features)]
     return feature_cols
 
 
@@ -34,6 +35,7 @@ def main(cfg: Namespace) -> None:
     n_epochs = cfg.n_epochs
     log_interval = 100
     fit(train_loader, train_loader, model, loss_fn, optimizer, scheduler, n_epochs, cfg.cuda, log_interval, metrics=[], start_epoch=0)
+    torch.save(model.state_dict(), "shallow_net.pt")
 
 
 if __name__ == '__main__':
