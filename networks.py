@@ -121,3 +121,25 @@ class ShallowNet(nn.Module):
 
     def get_embedding(self, x):
         return self.net(x)
+    
+    
+class ShallowEmbeddNet(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super(ShallowEmbeddNet, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.net = nn.Sequential(nn.Linear(input_dim, 256),
+                                 nn.PReLU(),
+                                 nn.Linear(256, 256),
+                                 nn.PReLU(),
+                                 nn.Linear(256, output_dim),
+                                 NormalizeLayer()
+                                )
+
+
+    def forward(self, x):
+        return self.get_embedding(x)
+
+
+    def get_embedding(self, x):
+        return self.net(x)

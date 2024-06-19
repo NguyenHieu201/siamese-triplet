@@ -197,6 +197,27 @@ class TripletLatent(Dataset):
 
     def __len__(self):
         return len(self.latent_df)
+    
+
+class TabularDataset(Dataset):
+    def __init__(self, latent_df: pd.DataFrame, feature_cols: List[str], train: bool = False):
+        self.latent_df = latent_df
+        self.train = train
+        self.feature_cols = feature_cols
+        self.train_labels = latent_df.name.cat.codes.values
+        self.train_data = latent_df[self.feature_cols].values.astype(float)
+        self.labels_set = set(self.train_labels)
+        self.label_to_indices = {label: np.where(self.train_labels == label)[0]
+                                    for label in self.labels_set}
+
+    def __getitem__(self, index):
+        feat1, label1 = self.train_data[index], self.train_labels[index].item()
+        feat1 = Tensor(feat1)
+        return feat1, label1
+
+
+    def __len__(self):
+        return len(self.latent_df)
 
 
 class BalancedBatchSampler(BatchSampler):
@@ -207,8 +228,8 @@ class BalancedBatchSampler(BatchSampler):
 
     def __init__(self, labels, n_classes, n_samples):
         self.labels = labels
-        self.labels_set = list(set(self.labels.numpy()))
-        self.label_to_indices = {label: np.where(self.labels.numpy() == label)[0]
+        self.labels_set = list(set(self.labels))
+        self.label_to_indices = {label: np.where(self.labels == label)[0]
                                  for label in self.labels_set}
         for l in self.labels_set:
             np.random.shuffle(self.label_to_indices[l])
