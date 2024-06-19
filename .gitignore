@@ -2,3 +2,5 @@
 __pycache__/
 *.ipynb
 *.pt
+datasets/*
+logs/*

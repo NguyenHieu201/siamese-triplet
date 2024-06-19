@@ -152,7 +152,8 @@ class TripletLatent(Dataset):
         self.train = train
         self.feature_cols = feature_cols
         if self.train:
-            self.train_labels = latent_df.name.values
+            # self.train_labels = latent_df.name.values
+            self.train_labels = latent_df.name.cat.codes.values
             self.train_data = latent_df[self.feature_cols].values.astype(float)
             self.labels_set = set(self.train_labels)
             self.label_to_indices = {label: np.where(self.train_labels == label)[0]

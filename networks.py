@@ -86,6 +86,14 @@ class TripletNet(nn.Module):
     def get_embedding(self, x):
         return self.embedding_net(x)
     
+    
+class NormalizeLayer(nn.Module):
+    def __init__(self):
+        super(NormalizeLayer, self).__init__()
+
+    def forward(self, x):
+        return F.normalize(x, p=2, dim=1)
+
 
 class ShallowNet(nn.Module):
     def __init__(self, input_dim: int, output_dim: int):
@@ -96,7 +104,8 @@ class ShallowNet(nn.Module):
                                  nn.PReLU(),
                                  nn.Linear(256, 256),
                                  nn.PReLU(),
-                                 nn.Linear(256, 128)
+                                 nn.Linear(256, output_dim),
+                                 NormalizeLayer()
                                 )
 
 
@@ -104,6 +113,9 @@ class ShallowNet(nn.Module):
         output1 = self.net(x1)
         output2 = self.net(x2)
         output3 = self.net(x3)
+        # output1 /= output1.pow(2).sum(1, keepdim=True).sqrt()
+        # output2 /= output2.pow(2).sum(1, keepdim=True).sqrt()
+        # output3 /= output3.pow(2).sum(1, keepdim=True).sqrt()
         return output1, output2, output3
 
 
