@@ -73,6 +73,9 @@ if __name__ == "__main__":
     output_df["name"] = df.name
     output_df["filename"] = df.filename
     output_df.to_csv("feature_filename_model.csv", index=False)
+    
+    # output_df = pd.read_csv("./feat_osnet_x0_75.csv")
+    # output_df["filename"] = pd.read_csv("feature_filename_model.csv")["filename"]
     # output_df = pd.read_csv("./feature_filename_model.csv")
     results = test_spm(output_df)
     print(results)

@@ -124,6 +124,10 @@ def random_hard_negative(loss_values):
     hard_negatives = np.where(loss_values > 0)[0]
     return np.random.choice(hard_negatives) if len(hard_negatives) > 0 else None
 
+def all_hard_negative(loss_values):
+    hard_negatives = np.where(loss_values > 0)[0]
+    return hard_negatives if len(hard_negatives) > 0 else None
+
 
 def semihard_negative(loss_values, margin):
     semihard_negatives = np.where(np.logical_and(loss_values < margin, loss_values > 0))[0]
@@ -169,7 +173,11 @@ class FunctionNegativeTripletSelector(TripletSelector):
                 hard_negative = self.negative_selection_fn(loss_values)
                 if hard_negative is not None:
                     hard_negative = negative_indices[hard_negative]
-                    triplets.append([anchor_positive[0], anchor_positive[1], hard_negative])
+                    if isinstance(hard_negative, np.ndarray):
+                        for hard_idx in hard_negative:
+                            triplets.append([anchor_positive[0], anchor_positive[1], hard_idx])
+                    else:
+                        triplets.append([anchor_positive[0], anchor_positive[1], hard_negative])
 
         if len(triplets) == 0:
             triplets.append([anchor_positive[0], anchor_positive[1], negative_indices[0]])
@@ -192,3 +200,7 @@ def RandomNegativeTripletSelector(margin, cpu=False): return FunctionNegativeTri
 def SemihardNegativeTripletSelector(margin, cpu=False): return FunctionNegativeTripletSelector(margin=margin,
                                                                                   negative_selection_fn=lambda x: semihard_negative(x, margin),
                                                                                   cpu=cpu)
+
+def HardNegativeTripleSelector(margin, cpu=False): return FunctionNegativeTripletSelector(margin=margin,
+                                                                                          negative_selection_fn=all_hard_negative,
+                                                                                          cpu=cpu)

@@ -1,9 +1,11 @@
+import os.path as osp
+
 import torch
 import numpy as np
 
 
 def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs, cuda, log_interval, metrics=[],
-        start_epoch=0):
+        start_epoch=0, save_path="./output"):
     """
     Loaders, model, loss function and metrics should work together for a given task,
     i.e. The model should be able to process data output of loaders,
@@ -31,6 +33,9 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
             message += '\t{}: {}'.format(metric.name(), metric.value())
         scheduler.step()
         print(message)
+        
+        ckpt_path = osp.join(save_path, f"epoch_{epoch}.pt")
+        torch.save(model.state_dict(), ckpt_path)
 
 
 def train_epoch(train_loader, model, loss_fn, optimizer, cuda, log_interval, metrics):
