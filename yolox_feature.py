@@ -6,11 +6,10 @@ import torch
 from torch import Tensor
 import cv2
 import numpy as np
-from torchvision.ops import roi_pool
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from yolox import YOLOPAFPN, YOLOXHead, YOLOX
-from yolox.darknet import CSPDarknet
 from yolox_roi_feature import BoxFeatureROI
 
 
@@ -27,7 +26,7 @@ def preprocess(image: cv2.Mat, input_size: tuple[int, int], mean=(0.485, 0.456, 
         interpolation=cv2.INTER_LINEAR,
     ).astype(np.float32)
     padded_img[: int(img.shape[0] * r), : int(img.shape[1] * r)] = resized_img
-
+    
     padded_img = padded_img[:, :, ::-1]
     padded_img /= 255.0
     if mean is not None:
@@ -49,7 +48,7 @@ def align_bbox(bboxes: Tensor, input_size: tuple[int, int], img_size: tuple[int,
 
 if __name__ == "__main__":
     # hyperparams
-    batch_size = 2
+    batch_size = 4
     in_channels = [256, 512, 1024]
     num_classes = 1
     depth = 0.33
@@ -66,9 +65,14 @@ if __name__ == "__main__":
     model.eval()
     
     # ROI pooling
-    spatial_scales = [1/2, 1/4, 1/8, 1/16, 1/32]
-    output_sizes = [3, 3, 3, 3, 3]
-    map_names = ["stem", "dark2", "dark3", "dark4", "dark5"]
+    # spatial_scales = [1/2, 1/4, 1/8, 1/16, 1/32]
+    # output_sizes = [32, 16, 8, 4, 2]
+    # map_names = ["stem", "dark2", "dark3", "dark4", "dark5"]
+    
+    spatial_scales = [1/8, 1/16, 1/32]
+    output_sizes = [(16, 8), (8, 4), (4, 2)]
+    map_names = ["dark3", "dark4", "dark5"]
+    
     box_feature_roi = BoxFeatureROI(yolox=model, spatial_scales=spatial_scales, 
                                     output_sizes=output_sizes, names=map_names)
     box_feature_roi = box_feature_roi.to("cuda:0")
@@ -80,7 +84,7 @@ if __name__ == "__main__":
     images = data["images"]
     annotations = data["annotations"]
     images = [image for image in images if osp.exists(image["file_name"])]
-    images = images[:10]
+    images = images[::12]
     for idx in tqdm(range(0, len(images), batch_size)):
         img_paths = [image["file_name"] for image in images[idx:idx+batch_size]]
         image_ids = [image["id"] for image in images[idx:idx+batch_size]]
@@ -124,4 +128,4 @@ if __name__ == "__main__":
             dfs[name].append(sub_df)
     for name, df in dfs.items():
         df = pd.concat(df)
-        df.to_csv(f"feature_{name}.csv", index=False)
+        df.to_csv(f"./datasets/spm_175930_dark3_168/feature_{name}.csv", index=False)

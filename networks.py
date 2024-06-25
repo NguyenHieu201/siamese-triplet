@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
 
 
 class EmbeddingNet(nn.Module):
@@ -128,9 +129,15 @@ class ShallowEmbeddNet(nn.Module):
         super(ShallowEmbeddNet, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.net = nn.Sequential(nn.Linear(input_dim, 256),
+        self.cnn = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=64, kernel_size=1),
+            nn.ReLU(),
+        )
+        self.net = nn.Sequential(nn.Linear(4096, 128),
                                  nn.PReLU(),
-                                 nn.Linear(256, 256),
+                                 nn.Linear(128, 128),
+                                 nn.PReLU(),
+                                 nn.Linear(128, 256),
                                  nn.PReLU(),
                                  nn.Linear(256, output_dim),
                                  NormalizeLayer()
@@ -142,4 +149,57 @@ class ShallowEmbeddNet(nn.Module):
 
 
     def get_embedding(self, x):
-        return self.net(x)
+        embedds = self.cnn(x)
+        embedds = embedds.flatten(1)
+        embedds = self.net(embedds)
+        return embedds
+    
+    
+class FlattenLayer(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        
+    def forward(self, inputs):
+        return inputs.flatten(1)
+
+class CombineNet(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int, n_classes: int) -> None:
+        super(CombineNet, self).__init__()
+        self.backbone = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=64, kernel_size=1),
+            nn.ReLU(),
+            FlattenLayer(),
+            nn.Linear(8192, 2048),
+            nn.PReLU(),
+            nn.Linear(2048, 512),
+            nn.PReLU(),
+            nn.Linear(512, 256),
+            nn.PReLU()
+        )
+        # self.backbone = self.__init_backbone()
+        self.contrastive_branch = nn.Sequential(
+            nn.Linear(256, output_dim),
+            NormalizeLayer()
+        )
+        self.classification_branch = nn.Sequential(
+            nn.Linear(256, n_classes)
+        )
+        
+    def __init_backbone(self):
+        backbone = mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.IMAGENET1K_V1)
+        backbone.features[0] = nn.Identity()
+        backbone.features[1] = nn.Identity()
+        backbone.features[2] = nn.Conv2d(128, 24, kernel_size=(1, 1), stride=(1, 1), bias=False)
+        backbone.classifier[3] = nn.Linear(1024, 256, bias=True)
+        return backbone
+
+    def forward(self, x):
+        x = self.backbone(x)
+        embedds = self.contrastive_branch(x)
+        confs = self.classification_branch(x)
+        return embedds, confs
+    
+    def get_embedding(self, x):
+        x = self.backbone(x)
+        embedds = self.contrastive_branch(x)
+        return embedds
